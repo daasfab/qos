@@ -20,7 +20,16 @@ export async function pinFragmentToCluster(fragment: Buffer, index: number): Pro
       }
     });
 
-    return response.data.cid;
+    console.log('ipfs cluster response:', response.data); //test
+
+    const cidData = response.data.cid;
+    const cidString = typeof cidData === 'string' ? cidData : cidData?.['/'];
+
+    if (!cidString) {
+      throw new Error('Failed to extract CID string from cluster response.');
+    }
+
+    return cidString;
   } catch (error) {
     console.error(`Failed to pin fragment ${index} to IPFS Cluster:`, error);
     throw error;

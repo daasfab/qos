@@ -31,7 +31,7 @@ To ensure consistency and streamline development across platforms, this project 
 
 Contributions are welcomed! 😎
 
-This project is built by humans, for humans. **Please no AI slop**. While I understand that using llm's is great for automating repetitive or simple tasks, please keep it to a minimum. If you submit a pull-request with code written with the help of AI, you must clearly state so in the PR description. 
+This project is built by humans, for humans. **Pls no AI slop**. While I understand that using llm's is very helpful, please keep it to a minimum. If you submit a pull-request with code written with the help of AI, please clearly state so in the PR description. 
 
 
 ### - Bugs & Feature proposals
