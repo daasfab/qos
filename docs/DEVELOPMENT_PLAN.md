@@ -16,18 +16,21 @@
 
 | Area | Status | Notes |
 |---|---|---|
-| `backend/utils/encryption.ts` | ✅ Done | AES-256-GCM encrypt, decrypt, fragment, reassemble |
-| `backend/utils/ipfs.ts` | 🟡 Draft | Pins fragments to local IPFS Cluster only (localhost:9094) |
-| `backend/utils/retrieval.ts` | 🟡 Draft | Fetches from local Kubo gateway (localhost:8080) |
+| `backend/utils/encryption.ts` | ✅ Done | Re-exports `@qos/core` Web Crypto API implementation |
+| `backend/utils/ipfs.ts` | ✅ Done | Refactored with `PinningStrategy` & Pinata support + env vars |
+| `backend/utils/retrieval.ts` | ✅ Done | Refactored with public gateway fallback list + retry & timeout logic |
 | `backend/docker-compose.yml` | ✅ Done | Kubo + ipfs-cluster locally wired |
-| `backend/test/integration/` | 🟡 Partial | encryption + ipfs tests exist, no retrieval tests |
-| Key exchange / identity | ❌ Missing | No user identity, no public key infrastructure |
-| Message manifest / CID index | ❌ Missing | No way to tell recipient where fragments live |
+| `backend/test/` | ✅ Done | Integration & unit tests for encryption, ipfs, retrieval, keys, manifest |
+| Key exchange / identity | ✅ Done | `@qos/core` ECDH P-256 keypair generation & AES-KW wrapping (`keys.ts`) |
+| Message manifest / CID index | ✅ Done | `@qos/core` canonical string signing & ECDSA verification (`manifest.ts`) |
+| Shared Core Library (`packages/core`) | ✅ Done | Built directly using Web Crypto API (`globalThis.crypto`) for Node & Browser |
 | API server | ❌ Missing | No HTTP/WebSocket server, no routes |
 | User registry | ❌ Missing | No user accounts, no unique ID lookup |
 | `web/` frontend | ❌ Missing | Folder does not exist yet |
-| Remote IPFS pinning | ❌ Missing | Everything is localhost only |
+| Remote IPFS pinning | 🟡 Configured | Pinata strategy implemented in backend, waiting for API server wiring |
 | Deployment | ❌ Missing | No CI/CD, no cloud hosting |
+
+> **Note for future developers**: The core protocol utilities (`encryption.ts`, `keys.ts`, `manifest.ts`) were written directly in `packages/core/` using Web Crypto API-compatible (`globalThis.crypto`) code from the start. This allows both `backend/` and `web/` to import `@qos/core` without duplicating crypto logic or refactoring later.
 
 ---
 
@@ -73,11 +76,11 @@ Each user has:
 
 ---
 
-### Phase 1 — Backend: Complete the Core Library
+### Phase 1 — Backend: Complete the Core Library ✅
 
 **Goal**: Make the backend utilities production-ready and fully testable.
 
-#### 1.1 — Refactor `ipfs.ts` for remote pinning
+#### 1.1 — Refactor `ipfs.ts` for remote pinning ✅
 - Replace hardcoded `localhost` with environment-variable-driven config
 - Add support for **Pinata** (primary and only pinning provider for now)
 - Implement the pinning logic behind a `PinningStrategy` interface so a second provider can be plugged in later with minimal code changes
@@ -85,17 +88,17 @@ Each user has:
 
 > **Note**: A second pinning provider (e.g. web3.storage) as a fallback is a **low-priority future task**. The `PinningStrategy` abstraction ensures it can be added without a rewrite when the time comes.
 
-#### 1.2 — Refactor `retrieval.ts` for public gateway
+#### 1.2 — Refactor `retrieval.ts` for public gateway ✅
 - Replace hardcoded gateway with configurable gateway list
 - Add fallback logic: try `dweb.link`, `cloudflare-ipfs.com`, then local
 - Add timeout and retry logic
 
-#### 1.3 — Add key exchange layer (`backend/utils/keys.ts`)
-- Implement ECDH P-256 keypair generation (using Node `crypto.generateKeyPairSync`)
-- Implement ECIES-style AES key wrapping: encrypt the AES key with recipient's ECDH pubkey
+#### 1.3 — Add key exchange layer (`packages/core/src/keys.ts`) ✅
+- Implement ECDH P-256 keypair generation using Web Crypto API (`globalThis.crypto.subtle`)
+- Implement ECIES-style AES key wrapping (ECDH shared secret + AES-KW)
 - Export: `generateIdentityKeypair()`, `wrapKey(aesKey, recipientPubKey)`, `unwrapKey(wrapped, privateKey)`
 
-#### 1.4 — Add manifest model (`backend/utils/manifest.ts`)
+#### 1.4 — Add manifest model (`packages/core/src/manifest.ts`) ✅
 
 ```typescript
 // Shape of the "message envelope" stored server-side
@@ -104,16 +107,16 @@ interface MessageManifest {
   sender_id: string;    // sender's internal UUID
   recipient_id: string; // recipient's internal UUID
   cids: string[];       // ordered fragment CIDs — order is the source of truth for reassembly
-  wrapped_key: string;  // AES key encrypted with recipient pubkey (base64)
+  wrapped_key: WrappedKey; // AES key wrapped with recipient ECDH pubkey
   timestamp: number;    // Unix ms — also used as the TTL anchor (expires 7 days after this)
   expires_at: number;   // timestamp + 7 days in Unix ms
-  signature: string;    // canonical hash signature (see signing spec below)
+  signature: string;    // canonical string signature
 }
 ```
 
 **Signing spec** (canonical hash, not raw JSON.stringify):
 ```
-sig_input = sender_id + recipient_id + String(timestamp) + cids.join(",") + wrapped_key
+sig_input = sender_id + recipient_id + String(timestamp) + cids.join(",") + wrapped_key.wrappedKeyB64
 hash      = SHA-256(sig_input)
 signature = ECDSA_sign(hash, sender_private_key)  // base64-encoded
 ```
@@ -121,12 +124,12 @@ This approach is deterministic regardless of JSON field ordering and covers the 
 
 - Export: `buildManifest(...)`, `verifyManifest(...)`
 
-#### 1.5 — Complete the test suite
+#### 1.5 — Complete the test suite ✅
 - Add integration tests for `retrieval.ts` (mock gateway responses)
 - Add unit tests for `keys.ts` and `manifest.ts`
 - Ensure all tests pass in CI
 
-**Deliverable**: A fully tested, environment-configurable set of backend utilities — the "protocol library".
+**Deliverable**: A fully tested, environment-configurable set of protocol utilities in `@qos/core` — the "protocol library".
 
 ---
 

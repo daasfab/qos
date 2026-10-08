@@ -1,0 +1,9 @@
+{
+  "name": "qos",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "web"
+  ]
+}
