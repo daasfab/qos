@@ -12,6 +12,9 @@ To ensure consistency and streamline development across platforms, this project 
 
 ### - Workspace Directory
 
+* 📁 **`qos/packages/core`**
+  The shared core protocol library (`@qos/core`). Contains encryption (`AES-256-GCM`), ECDH P-256 key exchange, AES-KW key wrapping, and manifest signing logic. Built directly using the **Web Crypto API** (`globalThis.crypto`) so it runs identically in both Node.js (backend) and browser (web).
+
 * 📁 **`qos/web`**
   The web-based client, built with **React**. It allows users to access the decentralized file-sharing platform directly from their browsers.
 
@@ -21,9 +24,12 @@ To ensure consistency and streamline development across platforms, this project 
 * 📁 **`qos/backend`**
   The central library for shared codebase and business logic. This directory contains the core **IPFS config, connection logic, and helper functions**. 
 
+> 📌 **Note**: All core protocol and crypto logic is implemented directly in `@qos/core` using Web Crypto API-compatible code from the start, avoiding duplicated crypto implementations between `backend/` and `web/`.
+
 ### - Tech Stack
 * **Frontend Clients:** React
 * **Network Protocol:** IPFS
+* **Core Protocol:** TypeScript (`@qos/core` using Web Crypto API)
 
 <br>
 
