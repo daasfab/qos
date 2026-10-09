@@ -33,7 +33,7 @@ export async function exportAesKey(key: CryptoKey): Promise<Uint8Array> {
 export async function importAesKey(raw: Uint8Array): Promise<CryptoKey> {
   return globalThis.crypto.subtle.importKey(
     'raw',
-    raw,
+    raw as BufferSource,
     { name: ALGORITHM },
     true,
     ['encrypt', 'decrypt'],
@@ -55,9 +55,9 @@ export async function encrypt(plaintext: string, key: CryptoKey): Promise<Uint8A
   const encoded = new TextEncoder().encode(plaintext);
 
   const ciphertextWithTag = await globalThis.crypto.subtle.encrypt(
-    { name: ALGORITHM, iv },
+    { name: ALGORITHM, iv: iv as BufferSource },
     key,
-    encoded,
+    encoded as BufferSource,
   );
 
   // Concatenate iv + ciphertextWithTag
@@ -72,13 +72,17 @@ export async function encrypt(plaintext: string, key: CryptoKey): Promise<Uint8A
  * Expects layout: [ iv (12 bytes) | ciphertext+authTag ]
  */
 export async function decrypt(payload: Uint8Array, key: CryptoKey): Promise<string> {
+  if (payload.length < IV_LENGTH) {
+    throw new Error(`Payload too short: expected at least ${IV_LENGTH} bytes, got ${payload.length}`);
+  }
+
   const iv = payload.subarray(0, IV_LENGTH);
   const ciphertextWithTag = payload.subarray(IV_LENGTH);
 
   const plaintext = await globalThis.crypto.subtle.decrypt(
-    { name: ALGORITHM, iv },
+    { name: ALGORITHM, iv: iv as BufferSource },
     key,
-    ciphertextWithTag,
+    ciphertextWithTag as BufferSource,
   );
 
   return new TextDecoder().decode(plaintext);

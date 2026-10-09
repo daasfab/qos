@@ -41,28 +41,36 @@ export async function generateIdentityKeypair(): Promise<IdentityKeypair> {
   return { publicKey, privateKey };
 }
 
-/** Export a public key to JWK format (safe to transmit / store server-side). */
+/** Export a public key (ECDH or ECDSA) to JWK format. */
 export async function exportPublicKey(key: CryptoKey): Promise<JsonWebKey> {
   return globalThis.crypto.subtle.exportKey('jwk', key);
 }
 
-/** Import a public key from JWK format. */
-export async function importPublicKey(jwk: JsonWebKey): Promise<CryptoKey> {
+/** Import an identity or signing public key from JWK format. */
+export async function importPublicKey(
+  jwk: JsonWebKey,
+  type: 'ECDH' | 'ECDSA' = 'ECDH',
+): Promise<CryptoKey> {
   return globalThis.crypto.subtle.importKey(
     'jwk',
     jwk,
-    { name: 'ECDH', namedCurve: 'P-256' },
+    { name: type, namedCurve: 'P-256' },
     true,
-    [],  // public keys have no usages in ECDH
+    type === 'ECDSA' ? ['verify'] : [],
   );
 }
 
-/** Export a private key to JWK (only stored locally — never transmitted). */
+/** Import a signing public key (ECDSA P-256) from JWK format. */
+export async function importSigningPublicKey(jwk: JsonWebKey): Promise<CryptoKey> {
+  return importPublicKey(jwk, 'ECDSA');
+}
+
+/** Export a private key (ECDH or ECDSA) to JWK format. */
 export async function exportPrivateKey(key: CryptoKey): Promise<JsonWebKey> {
   return globalThis.crypto.subtle.exportKey('jwk', key);
 }
 
-/** Import a private key from JWK (loaded from local storage on device). */
+/** Import an ECDH identity private key from JWK. */
 export async function importPrivateKey(jwk: JsonWebKey): Promise<CryptoKey> {
   return globalThis.crypto.subtle.importKey(
     'jwk',
@@ -70,6 +78,17 @@ export async function importPrivateKey(jwk: JsonWebKey): Promise<CryptoKey> {
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
     ['deriveKey'],
+  );
+}
+
+/** Import a signing private key (ECDSA P-256) from JWK format. */
+export async function importSigningPrivateKey(jwk: JsonWebKey): Promise<CryptoKey> {
+  return globalThis.crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    true,
+    ['sign'],
   );
 }
 
@@ -144,7 +163,7 @@ export async function unwrapKey(
 
   return globalThis.crypto.subtle.unwrapKey(
     'raw',
-    wrappedKeyBytes,
+    wrappedKeyBytes as BufferSource,
     kek,
     { name: 'AES-KW' },
     { name: 'AES-GCM', length: 256 },
@@ -183,7 +202,7 @@ export async function sign(data: string, privateKey: CryptoKey): Promise<string>
   const signature = await globalThis.crypto.subtle.sign(
     { name: 'ECDSA', hash: 'SHA-256' },
     privateKey,
-    encoded,
+    encoded as BufferSource,
   );
   return bufferToBase64(new Uint8Array(signature));
 }
@@ -199,8 +218,8 @@ export async function verify(
   return globalThis.crypto.subtle.verify(
     { name: 'ECDSA', hash: 'SHA-256' },
     publicKey,
-    signature,
-    encoded,
+    signature as BufferSource,
+    encoded as BufferSource,
   );
 }
 

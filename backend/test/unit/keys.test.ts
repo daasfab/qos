@@ -6,8 +6,10 @@ import {
   generateIdentityKeypair,
   exportPublicKey,
   importPublicKey,
+  importSigningPublicKey,
   exportPrivateKey,
   importPrivateKey,
+  importSigningPrivateKey,
   wrapKey,
   unwrapKey,
   generateSigningKeypair,
@@ -54,6 +56,20 @@ describe('Key generation', () => {
     const jwk2 = await exportPrivateKey(reimported);
 
     expect(jwk2.d).toBe(jwk1.d);
+  });
+
+  test('importSigningPublicKey & importSigningPrivateKey — round-trip preserves signing keys', async () => {
+    const { publicKey, privateKey } = await generateSigningKeypair();
+    const pubJwk = await exportPublicKey(publicKey);
+    const privJwk = await exportPrivateKey(privateKey);
+
+    const reimportedPub = await importSigningPublicKey(pubJwk);
+    const reimportedPriv = await importSigningPrivateKey(privJwk);
+
+    const data = 'test data for signing key roundtrip';
+    const sig = await sign(data, reimportedPriv);
+    const isValid = await verify(data, sig, reimportedPub);
+    expect(isValid).toBe(true);
   });
 });
 

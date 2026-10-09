@@ -102,7 +102,7 @@ export async function buildManifest(
   const signature = await sign(canonical, senderPrivateKey);
 
   return {
-    id: crypto.randomUUID(),  // placeholder; server will overwrite
+    id: globalThis.crypto.randomUUID(),  // placeholder; server will overwrite
     sender_id: input.sender_id,
     recipient_id: input.recipient_id,
     cids: input.cids,

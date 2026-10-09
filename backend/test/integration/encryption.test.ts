@@ -38,7 +38,9 @@ describe('Encryption (Web Crypto API)', () => {
 
     // Flip a byte deep in the ciphertext (after the 12-byte IV)
     const tampered = new Uint8Array(payload);
-    tampered[20] ^= 0xff;
+    if (tampered[20] !== undefined) {
+      tampered[20] ^= 0xff;
+    }
 
     await expect(decrypt(tampered, key)).rejects.toThrow();
   });
